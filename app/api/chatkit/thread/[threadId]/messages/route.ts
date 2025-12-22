@@ -83,6 +83,9 @@ export async function GET(
         })
         .filter(Boolean) ?? [];
 
+    // Invertir el orden de los mensajes
+    messages.reverse();
+
     return NextResponse.json({ messages, threadId });
   } catch (error: any) {
     console.error('❌ chatkit fetch error', error);
