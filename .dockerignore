@@ -1,0 +1,15 @@
+.next
+node_modules
+dist
+out
+.git
+.gitignore
+.npmrc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+.DS_Store
+coverage
+

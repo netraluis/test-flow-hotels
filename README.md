@@ -34,3 +34,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Docker / Dokploy
+
+Build and run locally:
+
+```bash
+docker build -t test-flow-hotels .
+docker run -p 3000:3000 --env-file .env.local test-flow-hotels
+```
+
+Dokploy:
+- Use the provided `Dockerfile` (multi-stage, port 3000).
+- Mount your env vars/secrets in Dokploy; `.env*` files are ignored by the image build.
