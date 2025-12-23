@@ -5,7 +5,8 @@ services:
       dockerfile: Dockerfile
     # container_name: nextjs-app # Comentado para evitar conflictos de nombre en despliegues múltiples
     restart: always
-    ports:
-      - "3005:3000" # Mapea puerto 3005 del host -> 3000 del contenedor
     env_file:
       - .env
+    labels:
+      - "traefik.http.middlewares.auth.basicauth.users=theagentslab:$apr1$MwlcGPR4$a5bXs72Cxw6JrKBRTutyP1"
+      - "traefik.http.routers.mcphotels-testflowhotels-8kzfd1.middlewares=auth"
