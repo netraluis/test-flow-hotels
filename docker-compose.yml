@@ -7,3 +7,5 @@ services:
     restart: always
     ports:
       - "3005:3000" # Mapea puerto 3005 del host -> 3000 del contenedor
+    env_file:
+      - .env
