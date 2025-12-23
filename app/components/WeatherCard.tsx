@@ -16,6 +16,7 @@ interface WeatherData {
   conditionDescription: string;
   conditionImage: string;
   forecast: ForecastItem[];
+  name: string;
 }
 
 interface WeatherCardProps {

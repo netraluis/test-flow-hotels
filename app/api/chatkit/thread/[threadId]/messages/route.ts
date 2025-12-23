@@ -48,7 +48,7 @@ export async function GET(
         ?.map((item: any) => {
           const role =
             item.role ??
-            (item.type === 'user_message'
+            (item.type === 'chatkit.user_message'
               ? 'user'
               : item.type === 'response'
               ? 'assistant'

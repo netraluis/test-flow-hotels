@@ -1,5 +1,7 @@
 import React from 'react';
 import { WeatherCard } from './WeatherCard';
+import { PlacesNearCard } from './PlacesNearCard';
+import { RouteCard } from './RouteCard';
 
 interface MessageBubbleProps {
   text: string;
@@ -14,6 +16,30 @@ function parseWeatherData(text: string) {
     }
   } catch {
     // Not valid JSON or not weather type
+  }
+  return null;
+}
+
+function parsePlacesNearData(text: string) {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.type === 'places_near' && parsed.places_near) {
+      return parsed;
+    }
+  } catch {
+    // Not valid JSON or not places_near type
+  }
+  return null;
+}
+
+function parseRouteData(text: string) {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.type === 'calculate_distance') {
+      return parsed;
+    }
+  } catch {
+    // Not valid JSON or not calculate_distance type
   }
   return null;
 }
@@ -37,6 +63,28 @@ export function MessageBubble({ text, isUser }: MessageBubbleProps) {
     return (
       <div className="flex w-full justify-start">
         <WeatherCard data={weatherData} />
+      </div>
+    );
+  }
+
+  // Try to parse places near data
+  const placesNearData = parsePlacesNearData(text);
+
+  if (placesNearData) {
+    return (
+      <div className="flex w-full justify-start">
+        <PlacesNearCard data={placesNearData} />
+      </div>
+    );
+  }
+
+  // Try to parse route data
+  const routeData = parseRouteData(text);
+
+  if (routeData) {
+    return (
+      <div className="flex w-full justify-start">
+        <RouteCard data={routeData} />
       </div>
     );
   }

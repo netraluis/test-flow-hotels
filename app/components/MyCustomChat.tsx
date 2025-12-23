@@ -20,23 +20,24 @@ export function MyCustomChat() {
   const threadIdRef = useRef<string | null>(null);
 
   // justo después de los refs
-const loadMessages = useCallback(async (threadId: string) => {
-  try {
-    const res = await fetch(`/api/chatkit/thread/${threadId}/messages`);
-    const data = await res.json();
-    if (Array.isArray(data.messages)) {
-      setMessages(
-        data.messages.map((msg: any) => ({
-          id: msg.id || `msg-${Date.now()}-${Math.random()}`,
-          text: msg.content || msg.text || '',
-          isUser: msg.role === 'user',
-        }))
-      );
+  const loadMessages = useCallback(async (threadId: string) => {
+    try {
+      const res = await fetch(`/api/chatkit/thread/${threadId}/messages`);
+      const data = await res.json();
+      console.log('🔍 data', data);
+      if (Array.isArray(data.messages)) {
+        setMessages(
+          data.messages.map((msg: any) => ({
+            id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+            text: msg.content || msg.text || '',
+            isUser: msg.role === 'user',
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Error loading messages:', err);
     }
-  } catch (err) {
-    console.error('Error loading messages:', err);
-  }
-}, []);
+  }, []);
 
 
 
@@ -136,11 +137,10 @@ const loadMessages = useCallback(async (threadId: string) => {
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-2xl">
-      {/* ChatKit oculto pero presente en el DOM para poder extraer las respuestas */}
-      {/* <div className="absolute opacity-0 pointer-events-none -z-10" style={{ width: '1px', height: '1px', overflow: 'hidden' }}> */}
+      <div className="absolute opacity-0 pointer-events-none -z-10" style={{ width: '1px', height: '1px', overflow: 'hidden' }}>
         <ChatKit control={control} className="h-[600px] w-full" />
-      {/* </div> */}
-      
+      </div>
+
       <div className="flex flex-col bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[400px] max-h-[500px] bg-zinc-50/50">
           {messages.length === 0 ? (
@@ -169,7 +169,7 @@ const loadMessages = useCallback(async (threadId: string) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-        
+
         <div className="p-4 border-t border-zinc-200 bg-white">
           <ChatInput
             value={inputValue}
