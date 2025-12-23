@@ -1,28 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   const flowId = process.env.FLOW_ID;
 
+  console.log("Debug Env Vars:");
+  console.log("- OPENAI_API_KEY exists:", !!apiKey);
+  console.log("- FLOW_ID:", flowId ? "Exists" : "Missing");
+
   if (!apiKey || !flowId) {
-    const missing = [];
-    if (!apiKey) missing.push('OPENAI_API_KEY');
-    if (!flowId) missing.push('FLOW_ID');
-    
     return NextResponse.json(
-      { 
-        error: 'Internal Server Error: Missing configuration',
-        details: `Missing: ${missing.join(', ')}`,
-      },
+      { error: "Missing configuration variables" },
       { status: 500 }
     );
   }
-
   // Obtener userId del body si está presente, sino usar uno genérico
   let userId: string;
   try {
-    const body = await request.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
     userId = body.userId || 'anonymous-user';
   } catch {
     userId = 'anonymous-user';

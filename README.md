@@ -35,15 +35,43 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Docker / Dokploy
+## Docker & Dokploy Deployment
 
-Build and run locally:
+This project includes a production-ready Docker configuration compatible with Dokploy and other container platforms.
+
+### Running Locally with Docker Compose
+
+The easiest way to run the project locally is with Docker Compose:
 
 ```bash
-docker build -t test-flow-hotels .
-docker run -p 3000:3000 --env-file .env.local test-flow-hotels
+docker-compose up -d --build
 ```
 
-Dokploy:
-- Use the provided `Dockerfile` (multi-stage, port 3000).
-- Mount your env vars/secrets in Dokploy; `.env*` files are ignored by the image build.
+This will build the image and start the container on port 3000. Open [http://localhost:3000](http://localhost:3000) to view it.
+
+### Running with Docker CLI
+
+1. **Build the image:**
+
+```bash
+docker build -t nextjs-app .
+```
+
+2. **Run the container:**
+
+```bash
+docker run -p 3000:3000 nextjs-app
+```
+
+### Deploying to Dokploy
+
+This project is pre-configured for Dokploy:
+
+1. Create a new "Application" in your Dokploy dashboard.
+2. Connect your Git repository.
+3. Select the branch you want to deploy (e.g., `main`).
+4. **Build Type:** Select `Dockerfile`.
+5. **Environment Variables:** Add any necessary environment variables (e.g., `OPENAI_API_KEY`) in the "Environment" tab.
+6. Click **Deploy**.
+
+The `Dockerfile` is optimized for production using a multi-stage build to keep the image size small and secure. It exposes port `3000` by default.
