@@ -9,4 +9,4 @@ services:
       - .env
     labels:
       - traefik.http.middlewares.auth.basicauth.users=theagentslab:$apr1$MwlcGPR4$a5bXs72Cxw6JrKBRTutyP1
-      - traefik.http.routers.mcphotels-testflowhotels-8kzfd1.middlewares=auth
+      - traefik.http.routers.mcphotels-testflowhotels-8kzfd1-86-web.middlewares=auth
