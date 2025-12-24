@@ -17,9 +17,11 @@ export async function POST(req: NextRequest) {
   }
   // Obtener userId del body si está presente, sino usar uno genérico
   let userId: string;
+  let stateVariables: Record<string, any> = {};
   try {
     const body = await req.json().catch(() => ({}));
     userId = body.userId || 'anonymous-user';
+    stateVariables = body.state || {};
   } catch {
     userId = 'anonymous-user';
   }
@@ -29,9 +31,13 @@ export async function POST(req: NextRequest) {
   try {
     const cleanFlowId = flowId.trim();
     
-    // @ts-ignore - The 'chatkit' namespace might not be in the types yet
     const session = await openai.beta.chatkit.sessions.create({
-      workflow: { id: cleanFlowId },
+      workflow: {
+        id: cleanFlowId,
+        ...(Object.keys(stateVariables).length > 0 && {
+          state_variables: stateVariables as { [key: string]: string | boolean | number },
+        }),
+      },
       user: userId,
     });
     

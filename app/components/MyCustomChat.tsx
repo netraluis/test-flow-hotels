@@ -54,6 +54,14 @@ export function MyCustomChat() {
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            userId: 'micolau-user',
+            state: {
+              name_place: 'Hotel Micolau',
+              latitude: '42.5709392',
+              longitude: '1.4724762',
+            },
+          }),
         });
         const { client_secret } = await res.json();
         console.log('🔑 [ChatKit] Client secret received', client_secret);
