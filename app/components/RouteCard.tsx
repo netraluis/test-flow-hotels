@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ExternalLink, Navigation, Clock, MapPin } from 'lucide-react';
 
@@ -101,4 +100,5 @@ export function RouteCard({ data }: RouteCardProps) {
     </Card>
   );
 }
+
 
