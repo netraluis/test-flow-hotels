@@ -3,24 +3,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ExternalLink, MapPin } from 'lucide-react';
 import { renderTextWithLinks } from '@/lib/utils';
 
-interface Place {
-  place_id: string;
+interface ActivityPlace {
   name: string;
-  address: string;
-  status: string;
-  view_on_google_maps: string;
+  description: string;
+  map_link: string;
 }
 
-interface PlacesNearData {
-  type: 'places_near';
-  places_near: Place[];
+interface ActivitiesData {
+  intent: string;
+  type: 'activities';
+  message: string;
+  places: ActivityPlace[];
 }
 
-interface PlacesNearCardProps {
-  data: PlacesNearData;
+interface ActivitiesCardProps {
+  data: ActivitiesData;
 }
 
-export function PlacesNearCard({ data }: PlacesNearCardProps) {
+export function ActivitiesCard({ data }: ActivitiesCardProps) {
   return (
     <Card className="w-full max-w-sm border border-zinc-200 shadow-lg bg-white">
       <CardContent className="p-8">
@@ -28,14 +28,21 @@ export function PlacesNearCard({ data }: PlacesNearCardProps) {
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="w-5 h-5 text-zinc-700" />
-            <h3 className="text-zinc-900 text-base font-semibold">Lugares Cercanos</h3>
+            <h3 className="text-zinc-900 text-base font-semibold">Actividades y Lugares</h3>
           </div>
 
-          {/* Places List */}
+          {/* Message */}
+          {data.message && (
+            <p className="text-zinc-700 text-sm leading-relaxed mb-2">
+              {renderTextWithLinks(data.message)}
+            </p>
+          )}
+
+          {/* Activities List */}
           <div className="flex flex-col gap-3">
-            {data.places_near.map((place) => (
+            {data.places.map((place, index) => (
               <div
-                key={place.place_id}
+                key={`${place.name}-${index}`}
                 className="bg-zinc-50 rounded-lg p-4 border border-zinc-200 hover:bg-zinc-100 transition-colors"
               >
                 <div className="flex flex-col gap-2">
@@ -44,24 +51,15 @@ export function PlacesNearCard({ data }: PlacesNearCardProps) {
                     {place.name}
                   </h4>
 
-                  {/* Address */}
+                  {/* Description */}
                   <p className="text-zinc-600 text-xs leading-relaxed">
-                    {renderTextWithLinks(place.address)}
+                    {renderTextWithLinks(place.description)}
                   </p>
 
-                  {/* Status and Link */}
-                  <div className="flex items-center justify-between mt-1">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        place.status === 'OPERATIONAL'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-zinc-200 text-zinc-600'
-                      }`}
-                    >
-                      {place.status}
-                    </span>
+                  {/* Map Link */}
+                  <div className="flex items-center justify-end mt-1">
                     <a
-                      href={place.view_on_google_maps}
+                      href={place.map_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-zinc-700 hover:text-zinc-900 text-xs font-medium transition-colors group"
@@ -79,4 +77,5 @@ export function PlacesNearCard({ data }: PlacesNearCardProps) {
     </Card>
   );
 }
+
 

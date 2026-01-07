@@ -2,6 +2,8 @@ import React from 'react';
 import { WeatherCard } from './WeatherCard';
 import { PlacesNearCard } from './PlacesNearCard';
 import { RouteCard } from './RouteCard';
+import { ActivitiesCard } from './ActivitiesCard';
+import { renderTextWithLinks } from '@/lib/utils';
 
 interface MessageBubbleProps {
   text: string;
@@ -44,13 +46,25 @@ function parseRouteData(text: string) {
   return null;
 }
 
+function parseActivitiesData(text: string) {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.type === 'activities' && parsed.places) {
+      return parsed;
+    }
+  } catch {
+    // Not valid JSON or not activities type
+  }
+  return null;
+}
+
 export function MessageBubble({ text, isUser }: MessageBubbleProps) {
   // Don't render weather card for user messages
   if (isUser) {
     return (
       <div className="flex w-full justify-end">
         <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm bg-zinc-900 text-white rounded-br-none">
-          {text}
+          {renderTextWithLinks(text)}
         </div>
       </div>
     );
@@ -89,11 +103,22 @@ export function MessageBubble({ text, isUser }: MessageBubbleProps) {
     );
   }
 
+  // Try to parse activities data
+  const activitiesData = parseActivitiesData(text);
+
+  if (activitiesData) {
+    return (
+      <div className="flex w-full justify-start">
+        <ActivitiesCard data={activitiesData} />
+      </div>
+    );
+  }
+
   // Default text rendering
   return (
     <div className="flex w-full justify-start">
       <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm bg-white text-zinc-900 border border-zinc-200 rounded-bl-none">
-        {text}
+        {renderTextWithLinks(text)}
       </div>
     </div>
   );
