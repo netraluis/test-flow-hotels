@@ -84,3 +84,6 @@ export function renderTextWithLinks(text: string): React.ReactNode {
   return <>{parts}</>;
 }
 
+// Re-export para uso en cliente si es necesario
+export { processPromptTemplate } from '@/lib/prompt-utils';
+
