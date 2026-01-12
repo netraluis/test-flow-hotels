@@ -58,7 +58,33 @@ function parseActivitiesData(text: string) {
   return null;
 }
 
+function parseTextResponse(text: string): string | null {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    console.log('🔍 parseTextResponse - parsed:', parsed);
+    
+    if (parsed && parsed.intent === 'finish' && parsed.response) {
+      console.log('✅ parseTextResponse - found finish intent with response');
+      return parsed.response;
+    }
+    // También manejar otros casos donde venga un response directamente
+    if (parsed && parsed.response && typeof parsed.response === 'string') {
+      console.log('✅ parseTextResponse - found response field');
+      return parsed.response;
+    }
+  } catch (e) {
+    // Not valid JSON - this is expected for regular text
+    console.log('ℹ️ parseTextResponse - not valid JSON, will render as plain text');
+  }
+  return null;
+}
+
 export function MessageBubble({ text, isUser }: MessageBubbleProps) {
+  console.log({text})
   // Don't render weather card for user messages
   if (isUser) {
     return (
@@ -110,6 +136,19 @@ export function MessageBubble({ text, isUser }: MessageBubbleProps) {
     return (
       <div className="flex w-full justify-start">
         <ActivitiesCard data={activitiesData} />
+      </div>
+    );
+  }
+
+  // Try to parse text response from JSON (intent: "finish" or similar)
+  const textResponse = parseTextResponse(text);
+
+  if (textResponse) {
+    return (
+      <div className="flex w-full justify-start">
+        <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm bg-white text-zinc-900 border border-zinc-200 rounded-bl-none">
+          {renderTextWithLinks(textResponse)}
+        </div>
       </div>
     );
   }

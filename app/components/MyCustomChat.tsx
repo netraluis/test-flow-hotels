@@ -121,27 +121,54 @@ export function MyCustomChat() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingUserMessageRef = useRef<string | null>(null);
   const threadIdRef = useRef<string | null>(null);
 
+  const loadingMessages = [
+    'Pensando...',
+    'Buscando tu respuesta...',
+    'Buscando la mejor ruta...',
+  ];
+
   // justo después de los refs
   const loadMessages = useCallback(async (threadId: string) => {
     try {
+      console.log('📥 Cargando mensajes para thread:', threadId);
       const res = await fetch(`/api/chatkit/thread/${threadId}/messages`);
+      
+      if (!res.ok) {
+        console.error('❌ Error en la respuesta del servidor:', res.status, res.statusText);
+        return;
+      }
+      
       const data = await res.json();
-      console.log('🔍 data', data);
-      if (Array.isArray(data.messages)) {
-        setMessages(
-          data.messages.map((msg: any) => ({
+      console.log('🔍 Mensajes recibidos del API:', data);
+      console.log('🔍 Cantidad de mensajes:', data.messages?.length || 0);
+      
+      if (Array.isArray(data.messages) && data.messages.length > 0) {
+        const formattedMessages = data.messages.map((msg: any) => {
+          const content = msg.content || msg.text || '';
+          console.log('📝 Procesando mensaje:', { 
+            id: msg.id, 
+            role: msg.role, 
+            contentLength: content.length,
+            contentPreview: content.substring(0, 100) 
+          });
+          return {
             id: msg.id || `msg-${Date.now()}-${Math.random()}`,
-            text: msg.content || msg.text || '',
+            text: content,
             isUser: msg.role === 'user',
-          }))
-        );
+          };
+        });
+        console.log('✅ Mensajes formateados (total:', formattedMessages.length, '):', formattedMessages);
+        setMessages(formattedMessages);
+      } else {
+        console.warn('⚠️ No se recibieron mensajes del servidor. Respuesta:', data);
       }
     } catch (err) {
-      console.error('Error loading messages:', err);
+      console.error('❌ Error loading messages:', err);
     }
   }, []);
 
@@ -174,10 +201,39 @@ export function MyCustomChat() {
       setIsLoading(true);
     },
     onResponseEnd: async () => {
+      console.log('✅ onResponseEnd - threadId actual:', threadIdRef.current);
       setIsLoading(false);
-      if (threadIdRef.current) {
-        await loadMessages(threadIdRef.current);
-      }
+      // Esperar un momento para asegurar que onThreadChange haya actualizado el threadId
+      // Esto es especialmente importante después de reiniciar la conversación
+      const maxAttempts = 20;
+      let attempts = 0;
+      
+      const tryLoadMessages = async () => {
+        const currentThreadId = threadIdRef.current;
+        if (currentThreadId) {
+          console.log(`📥 Cargando mensajes desde onResponseEnd para thread: ${currentThreadId} (intento ${attempts + 1})`);
+          await loadMessages(currentThreadId);
+          
+          // Si aún no hemos intentado muchas veces, hacer otro intento después de un delay
+          // Esto es útil para flows que pueden tardar más tiempo
+          if (attempts < 3) {
+            attempts++;
+            setTimeout(() => {
+              console.log(`🔄 Reintentando carga de mensajes... (intento ${attempts + 1})`);
+              tryLoadMessages();
+            }, 1500);
+          }
+        } else if (attempts < maxAttempts) {
+          attempts++;
+          console.log(`⏳ Esperando threadId... (intento ${attempts}/${maxAttempts})`);
+          setTimeout(tryLoadMessages, 300);
+        } else {
+          console.warn('⚠️ No se pudo cargar los mensajes: threadId no disponible después de onResponseEnd');
+        }
+      };
+      
+      // Aumentar el delay inicial para dar tiempo al flow de completarse
+      setTimeout(tryLoadMessages, 800);
     },
     onError: (event: { error: Error }) => {
       console.error('ChatKit error:', event.error);
@@ -191,12 +247,26 @@ export function MyCustomChat() {
     },
     onThreadChange: async (event: { threadId: string | null }) => {
       const threadId = event.threadId;
+      console.log('🔄 onThreadChange - nuevo threadId:', threadId);
       threadIdRef.current = threadId;
       setCurrentThreadId(threadId);
       if (!threadId) {
+        console.log('🧹 Limpiando mensajes (threadId es null)');
         setMessages([]);
       } else {
-        await loadMessages(threadId);
+        // Cargar mensajes cuando cambia el thread (incluyendo nuevo thread después de reset)
+        // Esperar un momento para asegurar que los mensajes estén disponibles en el servidor
+        console.log('📥 onThreadChange - programando carga de mensajes para thread:', threadId);
+        setTimeout(async () => {
+          console.log('📥 onThreadChange - cargando mensajes ahora para thread:', threadId);
+          await loadMessages(threadId);
+          
+          // Intentar cargar de nuevo después de un tiempo adicional por si el flow tarda
+          setTimeout(async () => {
+            console.log('🔄 onThreadChange - segunda carga de mensajes (por si el flow tardó más)');
+            await loadMessages(threadId);
+          }, 2000);
+        }, 800);
       }
     },
   });
@@ -212,27 +282,46 @@ export function MyCustomChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  // Efecto para rotar mensajes de carga
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingMessage(0);
+      return;
+    }
 
-    const messageText = inputValue.trim();
+    const interval = setInterval(() => {
+      setLoadingMessage((prev) => (prev + 1) % loadingMessages.length);
+    }, 2000); // Cambia cada 2 segundos
+
+    return () => clearInterval(interval);
+  }, [isLoading, loadingMessages.length]);
+
+  const handleSendMessage = async (messageText?: string) => {
+    const textToSend = messageText || inputValue.trim();
+    if (!textToSend || isLoading) return;
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: messageText,
+      text: textToSend,
       isUser: true,
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    pendingUserMessageRef.current = messageText;
+    pendingUserMessageRef.current = textToSend;
     setInputValue('');
     setIsLoading(true);
 
     try {
       // Enviar mensaje solo a ChatKit usando el control
       // La respuesta se extraerá automáticamente en onResponseEnd
+      const wasNewConversation = !threadIdRef.current;
       await sendUserMessage({
-        text: messageText,
+        text: textToSend,
       });
+      
+      // Los mensajes se cargarán automáticamente a través de onThreadChange y onResponseEnd
+      // No necesitamos cargar manualmente aquí para evitar duplicaciones
+      console.log('📤 Mensaje enviado. Esperando respuesta...');
     } catch (error) {
       console.error('Error sending message:', error);
       setIsLoading(false);
@@ -245,36 +334,70 @@ export function MyCustomChat() {
     }
   };
 
+  const suggestedQuestions = [
+    '¿Cómo puedo llegar al hotel?',
+    '¿Cómo puedo reservar una habitación en Hotel Micolau?',
+    '¿Hay spa o zona de relax?',
+    '¿A qué distancia está el hotel de las pistas de esquí?',
+  ];
+
   return (
-    <div className="flex flex-col gap-4 w-full max-w-2xl">
+    <div className="flex flex-col gap-4 w-full max-w-2xl h-full flex-1">
       <div className="absolute opacity-0 pointer-events-none -z-10" style={{ width: '1px', height: '1px', overflow: 'hidden' }}>
         <ChatKit control={control} className="h-[600px] w-full" />
       </div>
 
-      <div className="flex flex-col bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[400px] max-h-[500px] bg-zinc-50/50">
+      <div className="flex flex-col bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden h-full flex-1">
+        {/* Header del chat */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 bg-white">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
+              <span className="text-white text-sm font-semibold">C</span>
+            </div>
+            <span className="text-sm font-medium text-zinc-900">Ceci</span>
+          </div>
+        </div>
+        
+        <div className={`flex-1 overflow-y-auto p-4 bg-zinc-50/50 ${messages.length === 0 ? 'flex flex-col' : 'space-y-4'}`}>
           {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-              Comienza una conversación...
+            <div className="flex flex-col items-center justify-end h-full gap-4 pb-4">
+              <div className="text-zinc-500 text-sm mb-2 w-full max-w-2xl">Elige una pregunta para comenzar:</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
+                {suggestedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSendMessage(question)}
+                    disabled={isLoading}
+                    className="text-left p-4 bg-white border border-zinc-200 rounded-lg hover:border-zinc-900 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  >
+                    <span className="text-sm text-zinc-700 group-hover:text-zinc-900 font-medium">
+                      {question}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                text={message.text}
-                isUser={message.isUser}
-              />
-            ))
-          )}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white border border-zinc-100 rounded-2xl rounded-bl-none px-4 py-2 text-sm text-zinc-600">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                  <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce"></span>
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  text={message.text}
+                  isUser={message.isUser}
+                />
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-zinc-100 rounded-2xl rounded-bl-none px-4 py-2.5 text-sm text-zinc-600 flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-2 h-2 bg-zinc-400 rounded-full animate-bounce"></span>
+                    </div>
+                    <span className="ml-1 animate-pulse">{loadingMessages[loadingMessage]}</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
           <div ref={messagesEndRef} />
