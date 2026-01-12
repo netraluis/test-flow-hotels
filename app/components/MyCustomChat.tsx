@@ -148,20 +148,79 @@ export function MyCustomChat() {
       console.log('🔍 Cantidad de mensajes:', data.messages?.length || 0);
       
       if (Array.isArray(data.messages) && data.messages.length > 0) {
-        const formattedMessages = data.messages.map((msg: any) => {
-          const content = msg.content || msg.text || '';
-          console.log('📝 Procesando mensaje:', { 
-            id: msg.id, 
-            role: msg.role, 
-            contentLength: content.length,
-            contentPreview: content.substring(0, 100) 
-          });
-          return {
-            id: msg.id || `msg-${Date.now()}-${Math.random()}`,
-            text: content,
-            isUser: msg.role === 'user',
-          };
-        });
+        const formattedMessages = data.messages
+          .map((msg: any) => {
+            // Normalizar el contenido - puede venir como string o como objeto
+            let content = '';
+            if (typeof msg.content === 'string') {
+              content = msg.content;
+            } else if (typeof msg.text === 'string') {
+              content = msg.text;
+            } else if (msg.content && typeof msg.content === 'object') {
+              // Si viene como objeto, convertirlo a string JSON
+              content = JSON.stringify(msg.content);
+            } else {
+              content = String(msg.content || msg.text || '');
+            }
+            
+            console.log('📝 Procesando mensaje:', { 
+              id: msg.id, 
+              role: msg.role, 
+              contentLength: content.length,
+              contentPreview: content.substring(0, 100),
+              contentType: typeof msg.content
+            });
+            
+            // Si es mensaje del usuario, siempre incluirlo
+            if (msg.role === 'user') {
+              return {
+                id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+                text: content,
+                isUser: true,
+              };
+            }
+            
+            // Para mensajes del asistente, verificar si es un JSON interno que no debe mostrarse
+            // Solo procesar si el contenido no está vacío y es un string
+            if (content && typeof content === 'string' && content.trim().length > 0) {
+              try {
+                // Intentar parsear solo si parece JSON (empieza con { o [)
+                const trimmedContent = content.trim();
+                const looksLikeJson = (trimmedContent.startsWith('{') && trimmedContent.endsWith('}')) || 
+                                     (trimmedContent.startsWith('[') && trimmedContent.endsWith(']'));
+                if (looksLikeJson) {
+                  const parsed = JSON.parse(content);
+                  // Si es un objeto con 'intent' pero no tiene 'response' ni es un tipo reconocido,
+                  // es probablemente un mensaje interno del workflow que no debe mostrarse
+                  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.intent) {
+                    // Solo ocultar si NO es un intent finish con response, y NO es un tipo de card reconocido
+                    const isWeather = parsed.type === 'weather';
+                    const isPlacesNear = parsed.type === 'places_near';
+                    const isRoute = parsed.type === 'calculate_distance';
+                    const isActivities = parsed.type === 'activities';
+                    const hasResponse = parsed.response && typeof parsed.response === 'string';
+                    const isFinishIntent = parsed.intent === 'finish';
+                    
+                    // Solo filtrar si tiene intent pero no es un tipo reconocido ni tiene response
+                    if (!isWeather && !isPlacesNear && !isRoute && !isActivities && !hasResponse) {
+                      console.log('🚫 Filtrando mensaje interno:', parsed.intent, 'type:', parsed.type);
+                      return null; // Filtrar este mensaje
+                    }
+                  }
+                }
+              } catch (e) {
+                // No es JSON válido, está bien mostrarlo como texto
+                // En producción puede haber diferentes formatos, mejor dejarlo pasar
+              }
+            }
+            
+            return {
+              id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+              text: content,
+              isUser: false,
+            };
+          })
+          .filter(Boolean); // Eliminar mensajes null
         console.log('✅ Mensajes formateados (total:', formattedMessages.length, '):', formattedMessages);
         setMessages(formattedMessages);
       } else {
@@ -354,7 +413,7 @@ export function MyCustomChat() {
             <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center">
               <span className="text-white text-sm font-semibold">C</span>
             </div>
-            <span className="text-sm font-medium text-zinc-900">Ceci</span>
+            <span className="text-sm font-medium text-zinc-900">Cecilia</span>
           </div>
         </div>
         

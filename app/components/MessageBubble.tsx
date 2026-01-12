@@ -67,14 +67,22 @@ function parseTextResponse(text: string): string | null {
     const parsed = JSON.parse(text);
     console.log('🔍 parseTextResponse - parsed:', parsed);
     
+    // Si tiene un campo response, usar ese
+    if (parsed && parsed.response && typeof parsed.response === 'string') {
+      console.log('✅ parseTextResponse - found response field');
+      return parsed.response;
+    }
+    
+    // Si es finish intent con response
     if (parsed && parsed.intent === 'finish' && parsed.response) {
       console.log('✅ parseTextResponse - found finish intent with response');
       return parsed.response;
     }
-    // También manejar otros casos donde venga un response directamente
-    if (parsed && parsed.response && typeof parsed.response === 'string') {
-      console.log('✅ parseTextResponse - found response field');
-      return parsed.response;
+    
+    // Si es un objeto con intent pero sin response ni tipo reconocido, no mostrar
+    if (parsed && typeof parsed === 'object' && parsed.intent) {
+      console.log('🚫 parseTextResponse - objeto con intent pero sin response, ocultando');
+      return null; // No mostrar este objeto
     }
   } catch (e) {
     // Not valid JSON - this is expected for regular text
@@ -151,6 +159,25 @@ export function MessageBubble({ text, isUser }: MessageBubbleProps) {
         </div>
       </div>
     );
+  }
+
+  // Si parseTextResponse devolvió null explícitamente, no renderizar nada
+  // (esto significa que era un objeto JSON interno que no debe mostrarse)
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && parsed.intent && !parsed.response) {
+      // Es un objeto con intent pero sin response, no mostrarlo
+      // Verificar que no sea un tipo de card reconocido
+      const isRecognizedType = parsed.type === 'weather' || 
+                               parsed.type === 'places_near' || 
+                               parsed.type === 'calculate_distance' || 
+                               parsed.type === 'activities';
+      if (!isRecognizedType) {
+        return <></>; // Retornar fragmento vacío en lugar de null
+      }
+    }
+  } catch {
+    // No es JSON, continuar con renderizado normal
   }
 
   // Default text rendering
